@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Scorecard - CricPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #f4f7f6; color: #333; }
+        .details-header { background-color: #0b1c2d; color: white; padding: 15px; display: flex; align-items: center; gap: 15px; position: sticky; top: 0; }
+        .back-btn { color: white; text-decoration: none; font-size: 20px; }
+        
+        .summary-box { background: white; padding: 25px; margin: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .score-info { font-size: 20px; font-weight: 700; margin: 15px 0; color: #0b1c2d; line-height: 1.5; }
+        
+        .tabs { display: flex; background: white; margin-top: 10px; border-bottom: 1px solid #ddd; }
+        .tab { flex: 1; text-align: center; padding: 12px; font-size: 14px; font-weight: 600; color: #888; border-bottom: 3px solid transparent; }
+        .tab.active { color: #0b1c2d; border-bottom: 3px solid #00d289; }
+        
+        .api-notice { padding: 20px; text-align: center; font-size: 14px; color: #888; background: white; margin: 15px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="details-header">
+        <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+        <h3 id="head-title">Loading Match...</h3>
+    </div>
+
+    <div class="summary-box">
+        <p id="match-status" style="color: #ff3b30; font-weight: 600; font-size: 13px;">Fetching details from server...</p>
+        <div class="score-info" id="match-scores"><i class="fa-solid fa-spinner fa-spin"></i></div>
+        <p id="match-venue" style="font-size: 12px; color: #888; margin-top: 10px;"></p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab">Info</div>
+        <div class="tab active">Summary</div>
+        <div class="tab">Squads</div>
+    </div>
+
+    <div class="api-notice">
+        <i class="fa-solid fa-circle-info" style="font-size: 24px; color: #00d289; margin-bottom: 10px;"></i>
+        <p>Detailed ball-by-ball player scorecards (Batsmen & Bowlers list) require Premium API access. The Live Match summary is displayed above!</p>
+    </div>
+
+    <script>
+        const API_KEY = "13820d06-60c9-4457-bd63-049052eb6ed7";
+        
+        // URL se Match ID nikalna
+        const urlParams = new URLSearchParams(window.location.search);
+        const matchId = urlParams.get('id');
+
+        if(!matchId) {
+            document.getElementById('head-title').innerText = "Error";
+            document.getElementById('match-status').innerText = "No Match Selected";
+            document.getElementById('match-scores').innerText = "Please go back and select a match.";
+        } else {
+            // Asli match data fetch karna
+            fetch(`https://api.cricapi.com/v1/match_info?apikey=${API_KEY}&id=${matchId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.data) {
+                    let match = data.data;
+                    document.getElementById('head-title').innerText = match.teams[0] + " vs " + match.teams[1];
+                    document.getElementById('match-status').innerText = match.status;
+                    document.getElementById('match-venue').innerText = match.venue;
+                    
+                    let scoreText = "";
+                    if(match.score && match.score.length > 0) {
+                        // Dono teams ke score print karna
+                        scoreText = match.score.map(s => `${s.inning}: ${s.r}/${s.w} <span style="font-size: 14px; color: #888;">(${s.o} ov)</span>`).join('<br>');
+                    } else {
+                        scoreText = "Match not started yet or data unavailable.";
+                    }
+                    document.getElementById('match-scores').innerHTML = scoreText;
+                }
+            })
+            .catch(err => {
+                document.getElementById('match-scores').innerText = "Connection Error";
+            });
+        }
+    </script>
+</body>
+</html>

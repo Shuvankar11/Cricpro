@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICC Rankings - Men</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #f4f7f6; color: #333; }
+
+        /* Header Layout */
+        .page-header {
+            background-color: #0b1c2d;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .back-btn { color: white; text-decoration: none; font-size: 20px; }
+        
+        /* Tabs (Batting, Bowling) */
+        .tabs { display: flex; background: white; border-bottom: 1px solid #ddd; }
+        .tab { flex: 1; text-align: center; padding: 12px; font-size: 14px; font-weight: 600; color: #888; }
+        .tab.active { color: #0b1c2d; border-bottom: 3px solid #00d289; }
+
+        /* Rankings Content */
+        .content { padding: 20px; }
+        .format-title { font-size: 16px; font-weight: 700; color: #0b1c2d; margin-bottom: 10px; }
+        
+        .ranking-card {
+            background: white;
+            padding: 0 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .rank-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .rank-row:last-child { border-bottom: none; }
+        
+        .rank-num { font-weight: 700; font-size: 16px; width: 30px; color: #888; }
+        .player-info { flex: 1; }
+        .player-name { font-size: 15px; font-weight: 600; color: #333; }
+        .player-country { font-size: 12px; color: #888; text-transform: uppercase; }
+        .rating { font-weight: 700; color: #00d289; font-size: 16px; }
+
+        /* Highlight Top Rank */
+        .rank-row:first-child .rank-num { color: #0b1c2d; font-size: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="page-header">
+        <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+        <h3>ICC Rankings - Men</h3>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active">Batting</div>
+        <div class="tab">Bowling</div>
+        <div class="tab">All-Rounder</div>
+    </div>
+
+    <div class="content">
+        <h4 class="format-title">T20I Batters</h4>
+        
+        <div class="ranking-card">
+            <div class="rank-row">
+                <div class="rank-num">1</div>
+                <div class="player-info">
+                    <div class="player-name">Suryakumar Yadav</div>
+                    <div class="player-country">India</div>
+                </div>
+                <div class="rating">861</div>
+            </div>
+            
+            <div class="rank-row">
+                <div class="rank-num">2</div>
+                <div class="player-info">
+                    <div class="player-name">Phil Salt</div>
+                    <div class="player-country">England</div>
+                </div>
+                <div class="rating">802</div>
+            </div>
+            
+            <div class="rank-row">
+                <div class="rank-num">3</div>
+                <div class="player-info">
+                    <div class="player-name">Mohammad Rizwan</div>
+                    <div class="player-country">Pakistan</div>
+                </div>
+                <div class="rating">800</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
