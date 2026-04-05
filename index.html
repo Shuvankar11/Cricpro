@@ -35,8 +35,9 @@
         .all-matches-section { padding: 0 20px 20px 20px; display: flex; flex-direction: column; }
         .vertical-card { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; text-decoration: none; color: inherit; display: block; border-left: 4px solid var(--primary-color); }
 
-        .load-more-btn { background-color: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin: 10px auto 20px auto; width: 80%; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(11, 28, 45, 0.2); }
-        .load-more-btn:active { transform: scale(0.98); }
+        /* BUTTON DESIGN - Ab yeh hamesha dikhega */
+        .load-more-btn { background-color: var(--primary-color); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin: 10px auto 25px auto; width: 90%; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(11, 28, 45, 0.2); transition: 0.3s; }
+        .load-more-btn:active { transform: scale(0.96); }
 
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background-color: white; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
         .nav-item { text-align: center; color: var(--text-light); text-decoration: none; font-size: 11px; font-weight: 600; cursor: pointer; flex: 1; display: flex; flex-direction: column; align-items: center; }
@@ -61,13 +62,13 @@
         <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
     </div>
 
+    <button id="loadMoreBtn" class="load-more-btn">
+        <i class="fa-solid fa-rotate"></i> Load More Matches
+    </button>
+
     <section class="all-matches-section">
         <h2 class="section-title" style="padding: 0; margin-bottom: 15px; margin-top: 10px;"><i class="fa-solid fa-check-double"></i> Recent Results</h2>
         <div id="recent-matches"></div>
-        
-        <button id="loadMoreBtn" class="load-more-btn">
-            <i class="fa-solid fa-rotate"></i> Load More Matches
-        </button>
     </section>
 
     <div class="bottom-nav">
@@ -79,14 +80,10 @@
     <script>
         const API_KEY = "13820d06-60c9-4457-bd63-049052eb6ed7"; 
         
-        // 🔥 BROWSER MEMORY (SESSION STORAGE) SETTINGS 🔥
-        // Agar pehle se load kiya hua hai, toh memory se uthao, warna 0 se start karo
         let currentOffset = sessionStorage.getItem('cricpro_offset') ? parseInt(sessionStorage.getItem('cricpro_offset')) : 0;
         let allFetchedMatches = sessionStorage.getItem('cricpro_matches') ? JSON.parse(sessionStorage.getItem('cricpro_matches')) : [];
 
-        // Screen par Matches dikhane wala function
         function renderMatches(matchesArray) {
-            // Memory ko sort karna (IPL VIP hamesha upar)
             let sortedMatches = [...matchesArray];
             sortedMatches.sort((a, b) => {
                 let scoreA = 0; let scoreB = 0;
@@ -154,16 +151,14 @@
             });
 
             document.getElementById('live-matches').innerHTML = liveHTML || `<div class="loading-text">No live matches right now.</div>`;
-            document.getElementById('upcoming-matches').innerHTML = upcomingHTML || `<div class="loading-text">Click 'Load More' to find upcoming matches.</div>`;
+            document.getElementById('upcoming-matches').innerHTML = upcomingHTML || `<div class="loading-text">Use the button below to find upcoming matches.</div>`;
             document.getElementById('recent-matches').innerHTML = recentHTML || `<div class="loading-text">No recent results found.</div>`;
         }
 
-        // Jab user 'Back' button dabaye, toh bina wait kiye turant Memory (cache) se dikha do
         if(allFetchedMatches.length > 0) {
             renderMatches(allFetchedMatches);
         }
 
-        // Asli API Fetch function
         async function fetchCricketData(offset = 0, isLoadMore = false) {
             let loadBtn = document.getElementById('loadMoreBtn');
             if(isLoadMore) loadBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Loading...`;
@@ -182,25 +177,22 @@
 
                 let newMatches = data.data;
                 
-                // Naye matches ko purani list mein jodna ya update karna
                 newMatches.forEach(newMatch => {
                     let existingIndex = allFetchedMatches.findIndex(m => m.id === newMatch.id);
                     if(existingIndex !== -1) {
-                        allFetchedMatches[existingIndex] = newMatch; // Update score
+                        allFetchedMatches[existingIndex] = newMatch;
                     } else {
-                        allFetchedMatches.push(newMatch); // Add new match
+                        allFetchedMatches.push(newMatch);
                     }
                 });
 
-                // 🔥 Memory (Session Storage) mein Save karna 🔥
                 sessionStorage.setItem('cricpro_matches', JSON.stringify(allFetchedMatches));
                 sessionStorage.setItem('cricpro_offset', currentOffset);
 
-                // Screen par wapas naye matches dikhana
                 renderMatches(allFetchedMatches);
 
+                // Button wapas normal state mein
                 loadBtn.innerHTML = `<i class="fa-solid fa-rotate"></i> Load More Matches`;
-                if(newMatches.length < 25) loadBtn.style.display = 'none';
 
             } catch (error) { 
                 console.log(error); 
@@ -208,11 +200,9 @@
             }
         }
         
-        // Page load hote hi ek baar Page 1 fetch karna (Taki live score chalta rahe)
         fetchCricketData(0, false);
         setInterval(() => fetchCricketData(0, false), 180000); 
 
-        // Load More dabane par Page 2/Page 3 mangwana
         document.getElementById('loadMoreBtn').addEventListener('click', () => {
             currentOffset += 25; 
             fetchCricketData(currentOffset, true);
