@@ -15,10 +15,8 @@
         .logo { font-size: 24px; font-weight: 700; color: var(--accent-color); letter-spacing: 1px; }
         .logo span { color: white; }
         
-        /* Section Titles */
         .section-title { font-size: 16px; margin-top: 15px; padding: 0 20px; color: var(--primary-color); font-weight: 700; display: flex; align-items: center; gap: 8px; }
         
-        /* Horizontal Scroll for Live & Upcoming */
         .matches-container { padding: 15px 20px; display: flex; gap: 15px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; width: 100%; }
         .matches-container::-webkit-scrollbar { display: none; }
         
@@ -34,15 +32,17 @@
         .score { font-weight: 700; color: var(--primary-color); }
         .match-status { font-size: 12px; color: var(--accent-color); margin-top: 10px; font-weight: 600; }
 
-        /* Vertical List for Recent Matches */
-        .all-matches-section { padding: 0 20px 20px 20px; }
+        .all-matches-section { padding: 0 20px 20px 20px; display: flex; flex-direction: column; }
         .vertical-card { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; text-decoration: none; color: inherit; display: block; border-left: 4px solid var(--primary-color); }
+
+        .load-more-btn { background-color: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin: 10px auto 20px auto; width: 80%; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(11, 28, 45, 0.2); }
+        .load-more-btn:active { transform: scale(0.98); }
 
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background-color: white; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
         .nav-item { text-align: center; color: var(--text-light); text-decoration: none; font-size: 11px; font-weight: 600; cursor: pointer; flex: 1; display: flex; flex-direction: column; align-items: center; }
         .nav-item i { font-size: 20px; margin-bottom: 4px; }
         .nav-item.active { color: var(--primary-color); }
-        .loading-text { padding: 10px; color: var(--text-light); font-size: 13px; font-weight: 600; }
+        .loading-text { padding: 10px; color: var(--text-light); font-size: 13px; font-weight: 600; text-align: center; width: 100%; }
     </style>
 </head>
 <body>
@@ -53,7 +53,7 @@
 
     <h2 class="section-title"><div class="dot"></div> Live Matches</h2>
     <div class="matches-container" id="live-matches">
-        <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Fetching Live Scores...</div>
+        <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
     </div>
 
     <h2 class="section-title" style="color: var(--upcoming-orange);"><i class="fa-regular fa-clock"></i> Upcoming Matches</h2>
@@ -63,8 +63,11 @@
 
     <section class="all-matches-section">
         <h2 class="section-title" style="padding: 0; margin-bottom: 15px; margin-top: 10px;"><i class="fa-solid fa-check-double"></i> Recent Results</h2>
-        <div id="recent-matches">
-            </div>
+        <div id="recent-matches"></div>
+        
+        <button id="loadMoreBtn" class="load-more-btn">
+            <i class="fa-solid fa-rotate"></i> Load More Matches
+        </button>
     </section>
 
     <div class="bottom-nav">
@@ -75,83 +78,146 @@
 
     <script>
         const API_KEY = "13820d06-60c9-4457-bd63-049052eb6ed7"; 
+        
+        // 🔥 BROWSER MEMORY (SESSION STORAGE) SETTINGS 🔥
+        // Agar pehle se load kiya hua hai, toh memory se uthao, warna 0 se start karo
+        let currentOffset = sessionStorage.getItem('cricpro_offset') ? parseInt(sessionStorage.getItem('cricpro_offset')) : 0;
+        let allFetchedMatches = sessionStorage.getItem('cricpro_matches') ? JSON.parse(sessionStorage.getItem('cricpro_matches')) : [];
 
-        async function fetchCricketData() {
+        // Screen par Matches dikhane wala function
+        function renderMatches(matchesArray) {
+            // Memory ko sort karna (IPL VIP hamesha upar)
+            let sortedMatches = [...matchesArray];
+            sortedMatches.sort((a, b) => {
+                let scoreA = 0; let scoreB = 0;
+                let nameA = (a.name || "").toLowerCase(); let nameB = (b.name || "").toLowerCase();
+
+                let iplKeywords = ['ipl', 'indian premier league', 'chennai', 'mumbai', 'royal challengers', 'kolkata', 'sunrisers', 'capitals', 'punjab', 'titans', 'super giant', 'royals', 'kings'];
+                for(let word of iplKeywords) {
+                    if(nameA.includes(word)) scoreA += 10000;
+                    if(nameB.includes(word)) scoreB += 10000;
+                }
+
+                if(nameA.includes('t20i') || nameA.includes('odi') || nameA.includes('test')) scoreA += 5000;
+                if(nameB.includes('t20i') || nameB.includes('odi') || nameB.includes('test')) scoreB += 5000;
+
+                if(nameA.includes('women') || nameA.includes('cyprus') || nameA.includes('greece') || nameA.includes('oman') || nameA.includes('costa rica')) scoreA -= 2000;
+                if(nameB.includes('women') || nameB.includes('cyprus') || nameB.includes('greece') || nameB.includes('oman') || nameB.includes('costa rica')) scoreB -= 2000;
+
+                return scoreB - scoreA;
+            });
+
+            let liveHTML = ""; let upcomingHTML = ""; let recentHTML = "";
+
+            sortedMatches.forEach(match => {
+                let t1 = match.teams[0] || "TBA"; let t2 = match.teams[1] || "TBA";
+                let isLive = match.matchStarted && !match.matchEnded;
+                let isUpcoming = !match.matchStarted && !match.matchEnded;
+                let isRecent = match.matchEnded;
+                
+                let badge = ""; let border = "var(--primary-color)"; 
+                let cardClass = isRecent ? "vertical-card" : "score-card";
+                let borderSide = isRecent ? "left" : "top";
+                
+                let s1 = "Yet to bat"; let s2 = "Yet to bat";
+                let matchDate = match.date || "Upcoming";
+                let statusText = match.status || "Scheduled";
+
+                if(match.score && match.score.length > 0) {
+                    s1 = match.score[0] ? `${match.score[0].r}/${match.score[0].w} <span style="font-size:11px;color:#888;">(${match.score[0].o})</span>` : "Yet to bat";
+                    s2 = match.score[1] ? `${match.score[1].r}/${match.score[1].w} <span style="font-size:11px;color:#888;">(${match.score[1].o})</span>` : "Yet to bat";
+                }
+
+                if(isLive) {
+                    badge = `<span class="live-badge"><span class="dot"></span> LIVE</span>`; border = "var(--live-red)";
+                } else if(isUpcoming) {
+                    badge = `<span style="color: var(--upcoming-orange); font-size: 11px; font-weight: 700;">UPCOMING</span>`;
+                    border = "var(--upcoming-orange)"; 
+                    statusText = `<span style="color: var(--upcoming-orange);"><i class="fa-regular fa-calendar-days"></i> ${matchDate} <br> ${statusText}</span>`;
+                    s1 = "-"; s2 = "-";
+                } else {
+                    badge = `<span style="color: #888; font-size: 11px; font-weight: 700;">RESULT</span>`;
+                }
+
+                let card = `
+                    <a href="match-details.html?id=${match.id}" class="${cardClass}" style="border-${borderSide}-color: ${border};">
+                        <div class="match-header"><div class="match-name">${match.name}</div>${badge}</div>
+                        <div class="team-row"><span>${t1}</span><span class="score">${s1}</span></div>
+                        <div class="team-row"><span style="color: var(--text-light);">${t2}</span><span class="score" style="color: var(--text-light);">${s2}</span></div>
+                        <div class="match-status">${statusText}</div>
+                    </a>
+                `;
+
+                if(isLive) liveHTML += card;
+                else if(isUpcoming) upcomingHTML += card;
+                else recentHTML += card;
+            });
+
+            document.getElementById('live-matches').innerHTML = liveHTML || `<div class="loading-text">No live matches right now.</div>`;
+            document.getElementById('upcoming-matches').innerHTML = upcomingHTML || `<div class="loading-text">Click 'Load More' to find upcoming matches.</div>`;
+            document.getElementById('recent-matches').innerHTML = recentHTML || `<div class="loading-text">No recent results found.</div>`;
+        }
+
+        // Jab user 'Back' button dabaye, toh bina wait kiye turant Memory (cache) se dikha do
+        if(allFetchedMatches.length > 0) {
+            renderMatches(allFetchedMatches);
+        }
+
+        // Asli API Fetch function
+        async function fetchCricketData(offset = 0, isLoadMore = false) {
+            let loadBtn = document.getElementById('loadMoreBtn');
+            if(isLoadMore) loadBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Loading...`;
+
             try {
-                // 🔥 WAPAS SINGLE API PAR AA GAYE (API Limit Bachane ke liye) 🔥
-                const response = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}&offset=0`);
+                const response = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}&offset=${offset}`);
                 const data = await response.json();
 
                 if(data.status !== "success") {
-                    document.getElementById('live-matches').innerHTML = `<div class="loading-text" style="color:red;">API Limit Reached! Kal subah refresh hogi.</div>`;
-                    document.getElementById('upcoming-matches').innerHTML = "";
-                    document.getElementById('recent-matches').innerHTML = "";
+                    if(!isLoadMore && allFetchedMatches.length === 0) {
+                        document.getElementById('live-matches').innerHTML = `<div class="loading-text" style="color:red;">API Limit Reached! Kal refresh hogi.</div>`;
+                    }
+                    if(isLoadMore) loadBtn.innerHTML = "Limit Reached / Error";
                     return;
                 }
 
-                let liveHTML = ""; let upcomingHTML = ""; let recentHTML = "";
+                let newMatches = data.data;
+                
+                // Naye matches ko purani list mein jodna ya update karna
+                newMatches.forEach(newMatch => {
+                    let existingIndex = allFetchedMatches.findIndex(m => m.id === newMatch.id);
+                    if(existingIndex !== -1) {
+                        allFetchedMatches[existingIndex] = newMatch; // Update score
+                    } else {
+                        allFetchedMatches.push(newMatch); // Add new match
+                    }
+                });
 
-                if(data.data) {
-                    data.data.forEach(match => {
-                        let t1 = match.teams[0] || "TBA"; let t2 = match.teams[1] || "TBA";
-                        
-                        // Status check
-                        let isLive = match.matchStarted && !match.matchEnded;
-                        let isUpcoming = !match.matchStarted && !match.matchEnded;
-                        let isRecent = match.matchEnded;
-                        
-                        let badge = ""; let border = "var(--primary-color)"; 
-                        let cardClass = isRecent ? "vertical-card" : "score-card";
-                        let borderSide = isRecent ? "left" : "top";
-                        
-                        let s1 = "Yet to bat"; let s2 = "Yet to bat";
-                        let matchDate = match.date || "Upcoming";
-                        let statusText = match.status || "Scheduled";
+                // 🔥 Memory (Session Storage) mein Save karna 🔥
+                sessionStorage.setItem('cricpro_matches', JSON.stringify(allFetchedMatches));
+                sessionStorage.setItem('cricpro_offset', currentOffset);
 
-                        if(match.score && match.score.length > 0) {
-                            s1 = match.score[0] ? `${match.score[0].r}/${match.score[0].w} (${match.score[0].o})` : "Yet to bat";
-                            s2 = match.score[1] ? `${match.score[1].r}/${match.score[1].w} (${match.score[1].o})` : "Yet to bat";
-                        }
+                // Screen par wapas naye matches dikhana
+                renderMatches(allFetchedMatches);
 
-                        if(isLive) {
-                            badge = `<span class="live-badge"><span class="dot"></span> LIVE</span>`;
-                            border = "var(--live-red)";
-                        } else if(isUpcoming) {
-                            badge = `<span style="color: var(--upcoming-orange); font-size: 11px; font-weight: 700;">UPCOMING</span>`;
-                            border = "var(--upcoming-orange)"; 
-                            statusText = `<span style="color: var(--upcoming-orange);"><i class="fa-regular fa-calendar-days"></i> ${matchDate} <br> ${statusText}</span>`;
-                            s1 = "-"; s2 = "-";
-                        } else {
-                            badge = `<span style="color: #888; font-size: 11px; font-weight: 700;">RESULT</span>`;
-                        }
-
-                        let card = `
-                            <a href="match-details.html?id=${match.id}" class="${cardClass}" style="border-${borderSide}-color: ${border};">
-                                <div class="match-header"><div class="match-name">${match.name}</div>${badge}</div>
-                                <div class="team-row"><span>${t1}</span><span class="score">${s1}</span></div>
-                                <div class="team-row"><span style="color: var(--text-light);">${t2}</span><span class="score" style="color: var(--text-light);">${s2}</span></div>
-                                <div class="match-status">${statusText}</div>
-                            </a>
-                        `;
-
-                        if(isLive) liveHTML += card;
-                        else if(isUpcoming) upcomingHTML += card;
-                        else recentHTML += card;
-                    });
-                }
-
-                document.getElementById('live-matches').innerHTML = liveHTML || `<div class="loading-text">No live matches right now.</div>`;
-                document.getElementById('upcoming-matches').innerHTML = upcomingHTML || `<div class="loading-text">No upcoming matches in current list.</div>`;
-                document.getElementById('recent-matches').innerHTML = recentHTML || `<div class="loading-text">No recent results found.</div>`;
+                loadBtn.innerHTML = `<i class="fa-solid fa-rotate"></i> Load More Matches`;
+                if(newMatches.length < 25) loadBtn.style.display = 'none';
 
             } catch (error) { 
                 console.log(error); 
+                if(isLoadMore) loadBtn.innerHTML = "Connection Error";
             }
         }
         
-        fetchCricketData();
-        // Har 3 minute (180000ms) mein refresh hoga, isse limit jaldi khatam nahi hogi
-        setInterval(fetchCricketData, 180000); 
+        // Page load hote hi ek baar Page 1 fetch karna (Taki live score chalta rahe)
+        fetchCricketData(0, false);
+        setInterval(() => fetchCricketData(0, false), 180000); 
+
+        // Load More dabane par Page 2/Page 3 mangwana
+        document.getElementById('loadMoreBtn').addEventListener('click', () => {
+            currentOffset += 25; 
+            fetchCricketData(currentOffset, true);
+        });
+
     </script>
 </body>
 </html>
